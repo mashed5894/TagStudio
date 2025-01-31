@@ -442,7 +442,7 @@ class ItemThumb(FlowWidget):
             with catch_warnings(record=True):
                 self.thumb_button.pressed.disconnect()
             self.thumb_button.pressed.connect(
-                lambda: clickable() if not self.thumb_button.selected else None
+                lambda: clickable()
             )
 
     def set_item_id(self, item_id: int):

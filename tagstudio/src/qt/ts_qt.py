@@ -1068,13 +1068,16 @@ class QtDriver(DriverMixin, QObject):
                 )
 
         else:
-            self.selected.clear()
-            self.selected.append(item_id)
-        for it in self.item_thumbs:
-            if it.item_id in self.selected:
-                it.thumb_button.set_selected(True)
+            if len(self.selected) == 1 and item_id in self.selected:
+                self.selected.clear() 
             else:
-                it.thumb_button.set_selected(False)
+                self.selected.clear()
+                self.selected.append(item_id)
+            for it in self.item_thumbs:
+                if it.item_id in self.selected:
+                    it.thumb_button.set_selected(True)
+                else:
+                    it.thumb_button.set_selected(False)
 
         self.set_macro_menu_viability()
         self.preview_panel.update_widgets()
