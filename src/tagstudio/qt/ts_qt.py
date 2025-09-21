@@ -365,6 +365,11 @@ class QtDriver(DriverMixin, QObject):
         # Initialize the Color Group Manager panel
         self.color_manager_panel = TagColorManager(self)
 
+        # Update Open Recent list
+        self.update_recent_lib_menu()
+
+        self.copy_buffer: dict = {"fields": [], "tags": []}
+
         # Initialize the Tag Search panel
         self.add_tag_modal = TagSearchModal(self.lib, is_tag_chooser=True)
         self.add_tag_modal.tsp.set_driver(self)
@@ -375,187 +380,7 @@ class QtDriver(DriverMixin, QObject):
             )
         )
 
-        # region Menu Bar
-
-        # region File Menu ============================================================
-        # Open/Create Library
-        self.main_window.menu_bar.open_library_action.triggered.connect(
-            self.open_library_from_dialog
-        )
-
-        # Open Recent
-        self.update_recent_lib_menu()
-
-        # Save Library Backup
-        self.main_window.menu_bar.save_library_backup_action.triggered.connect(
-            lambda: self.call_if_library_open(self.backup_library)
-        )
-
-        # Settings...
-        self.main_window.menu_bar.settings_action.triggered.connect(self.open_settings_modal)
-
-        # Open Library on Start
-        self.main_window.menu_bar.open_on_start_action.setChecked(
-            self.settings.open_last_loaded_on_startup
-        )
-
-        def set_open_last_loaded_on_startup(checked: bool):
-            self.settings.open_last_loaded_on_startup = checked
-            self.settings.save()
-
-        self.main_window.menu_bar.open_on_start_action.triggered.connect(
-            set_open_last_loaded_on_startup
-        )
-
-        # Refresh Directories
-        self.main_window.menu_bar.refresh_dir_action.triggered.connect(
-            lambda: self.call_if_library_open(self.add_new_files_callback)
-        )
-
-        # Close Library
-        self.main_window.menu_bar.close_library_action.triggered.connect(self.close_library)
-
-        # endregion
-
-        # region Edit Menu ============================================================
-        self.main_window.menu_bar.new_tag_action.triggered.connect(
-            lambda: self.add_tag_action_callback()
-        )
-
-        self.main_window.menu_bar.select_all_action.triggered.connect(
-            self.select_all_action_callback
-        )
-
-        self.main_window.menu_bar.select_inverse_action.triggered.connect(
-            self.select_inverse_action_callback
-        )
-
-        self.main_window.menu_bar.clear_select_action.triggered.connect(
-            self.clear_select_action_callback
-        )
-
-        self.copy_buffer: dict = {"fields": [], "tags": []}
-
-        self.main_window.menu_bar.copy_fields_action.triggered.connect(
-            self.copy_fields_action_callback
-        )
-
-        self.main_window.menu_bar.paste_fields_action.triggered.connect(
-            self.paste_fields_action_callback
-        )
-
-        self.main_window.menu_bar.add_tag_to_selected_action.triggered.connect(
-            self.add_tag_modal.show
-        )
-
-        self.main_window.menu_bar.delete_file_action.triggered.connect(
-            lambda f="": self.delete_files_callback(f)
-        )
-
-        self.main_window.menu_bar.tag_manager_action.triggered.connect(self.tag_manager_panel.show)
-
-        self.main_window.menu_bar.color_manager_action.triggered.connect(
-            self.color_manager_panel.show
-        )
-
-        # endregion
-
-        # region View Menu ============================================================
-
-        def create_library_info_window():
-            if not hasattr(self, "library_info_window"):
-                self.library_info_window = LibraryInfoWindow(self.lib, self)
-            self.library_info_window.show()
-
-        self.main_window.menu_bar.library_info_action.triggered.connect(create_library_info_window)
-
-        def on_show_filenames_action(checked: bool):
-            self.settings.show_filenames_in_grid = checked
-            self.settings.save()
-            self.show_grid_filenames(checked)
-
-        self.main_window.menu_bar.show_filenames_action.triggered.connect(on_show_filenames_action)
-        self.main_window.menu_bar.show_filenames_action.setChecked(
-            self.settings.show_filenames_in_grid
-        )
-
-        def on_decrease_thumbnail_size_action():
-            new_val = self.main_window.thumb_size_combobox.currentIndex() + 1
-            if not (new_val + 1) > len(self.main_window.THUMB_SIZES):
-                self.main_window.thumb_size_combobox.setCurrentIndex(new_val)
-
-        self.main_window.menu_bar.decrease_thumbnail_size_action.triggered.connect(
-            on_decrease_thumbnail_size_action
-        )
-
-        def on_increase_thumbnail_size_action():
-            new_val = self.main_window.thumb_size_combobox.currentIndex() - 1
-            if not new_val < 0:
-                self.main_window.thumb_size_combobox.setCurrentIndex(new_val)
-
-        self.main_window.menu_bar.increase_thumbnail_size_action.triggered.connect(
-            on_increase_thumbnail_size_action
-        )
-
-        # endregion
-
-        # region Tools Menu ===========================================================
-
-        def create_fix_unlinked_entries_modal():
-            if not hasattr(self, "unlinked_modal"):
-                self.unlinked_modal = FixUnlinkedEntriesModal(self.lib, self)
-            self.unlinked_modal.show()
-
-        self.main_window.menu_bar.fix_unlinked_entries_action.triggered.connect(
-            create_fix_unlinked_entries_modal
-        )
-
-        def create_ignored_entries_modal():
-            if not hasattr(self, "ignored_modal"):
-                self.ignored_modal = FixIgnoredEntriesModal(self.lib, self)
-            self.ignored_modal.show()
-
-        self.main_window.menu_bar.fix_ignored_entries_action.triggered.connect(
-            create_ignored_entries_modal
-        )
-
-        def create_dupe_files_modal():
-            if not hasattr(self, "dupe_modal"):
-                self.dupe_modal = FixDupeFilesModal(self.lib, self)
-            self.dupe_modal.show()
-
-        self.main_window.menu_bar.fix_dupe_files_action.triggered.connect(create_dupe_files_modal)
-
-        # TODO: Move this to a settings screen.
-        self.main_window.menu_bar.clear_thumb_cache_action.triggered.connect(
-            lambda: self.cache_manager.clear_cache()
-        )
-
-        # endregion
-
-        # region Macros Menu ==========================================================
-        def create_folders_tags_modal():
-            if not hasattr(self, "folders_modal"):
-                self.folders_modal = FoldersToTagsModal(self.lib, self)
-            self.folders_modal.show()
-
-        self.main_window.menu_bar.folders_to_tags_action.triggered.connect(
-            create_folders_tags_modal
-        )
-
-        # endregion
-
-        # region Help Menu ============================================================
-        def create_about_modal():
-            if not hasattr(self, "about_modal"):
-                self.about_modal = AboutModal(self.global_settings_path)
-            self.about_modal.show()
-
-        self.main_window.menu_bar.about_action.triggered.connect(create_about_modal)
-
-        # endregion
-
-        # endregion
+        self.main_window.menu_bar.connect_triggers(self)
 
         self.main_window.search_field.textChanged.connect(self.update_completions_list)
 
@@ -593,6 +418,41 @@ class QtDriver(DriverMixin, QObject):
         self.app.exec()
         self.shutdown()
 
+    def create_fix_unlinked_entries_modal(self):
+        if not hasattr(self, "unlinked_modal"):
+            self.unlinked_modal = FixUnlinkedEntriesModal(self.lib, self)
+        self.unlinked_modal.show()
+
+    def create_ignored_entries_modal(self):
+        if not hasattr(self, "ignored_modal"):
+            self.ignored_modal = FixIgnoredEntriesModal(self.lib, self)
+        self.ignored_modal.show()
+
+    def create_dupe_files_modal(self):
+        if not hasattr(self, "dupe_modal"):
+            self.dupe_modal = FixDupeFilesModal(self.lib, self)
+        self.dupe_modal.show()
+
+    def create_folders_tags_modal(self):
+        if not hasattr(self, "folders_modal"):
+            self.folders_modal = FoldersToTagsModal(self.lib, self)
+        self.folders_modal.show()
+
+    def create_about_modal(self):
+        if not hasattr(self, "about_modal"):
+            self.about_modal = AboutModal(self.global_settings_path)
+        self.about_modal.show()
+
+    def on_show_filenames_action(self, checked: bool):
+        self.settings.show_filenames_in_grid = checked
+        self.settings.save()
+        self.show_grid_filenames(checked)
+
+    def create_library_info_window(self):
+        if not hasattr(self, "library_info_window"):
+            self.library_info_window = LibraryInfoWindow(self.lib, self)
+        self.library_info_window.show()
+
     def show_error_message(self, error_name: str, error_desc: str | None = None):
         self.main_window.status_bar.showMessage(error_name, Qt.AlignmentFlag.AlignLeft)
         self.main_window.landing_widget.set_status_label(error_name)
@@ -608,6 +468,20 @@ class QtDriver(DriverMixin, QObject):
 
         # Show the message box
         msg_box.exec()
+
+    def increase_thumbnail_size(self):
+        new_val = self.main_window.thumb_size_combobox.currentIndex() - 1
+        if not new_val < 0:
+            self.main_window.thumb_size_combobox.setCurrentIndex(new_val)
+
+    def decrease_thumbnail_size(self):
+        new_val = self.main_window.thumb_size_combobox.currentIndex() + 1
+        if not (new_val + 1) > len(self.main_window.THUMB_SIZES):
+            self.main_window.thumb_size_combobox.setCurrentIndex(new_val)
+
+    def set_open_last_loaded_on_startup(self, checked: bool):
+        self.settings.open_last_loaded_on_startup = checked
+        self.settings.save()
 
     def init_library_window(self):
         # self._init_landing_page() # Taken care of inside the widget now
@@ -746,8 +620,12 @@ class QtDriver(DriverMixin, QObject):
         if self.color_manager_panel:
             self.color_manager_panel.reset()
 
-        self.set_clipboard_menu_viability()
-        self.set_select_actions_visibility()
+        has_copy_buffer = len(self.copy_buffer["fields"]) > 0 or len(self.copy_buffer["tags"]) > 0
+        self.main_window.menu_bar.set_clipboard_menu_visibility(len(self.selected), has_copy_buffer)
+        has_frame_content = len(self.frame_content) > 0
+        self.main_window.menu_bar.set_select_actions_visibility(
+            len(self.selected), has_frame_content
+        )
 
         if hasattr(self, "library_info_window"):
             self.library_info_window.close()
@@ -757,19 +635,7 @@ class QtDriver(DriverMixin, QObject):
         self.main_window.toggle_landing_page(enabled=True)
         self.main_window.pagination.setHidden(True)
         try:
-            self.main_window.menu_bar.save_library_backup_action.setEnabled(False)
-            self.main_window.menu_bar.close_library_action.setEnabled(False)
-            self.main_window.menu_bar.refresh_dir_action.setEnabled(False)
-            self.main_window.menu_bar.tag_manager_action.setEnabled(False)
-            self.main_window.menu_bar.color_manager_action.setEnabled(False)
-            self.main_window.menu_bar.ignore_modal_action.setEnabled(False)
-            self.main_window.menu_bar.new_tag_action.setEnabled(False)
-            self.main_window.menu_bar.fix_unlinked_entries_action.setEnabled(False)
-            self.main_window.menu_bar.fix_ignored_entries_action.setEnabled(False)
-            self.main_window.menu_bar.fix_dupe_files_action.setEnabled(False)
-            self.main_window.menu_bar.clear_thumb_cache_action.setEnabled(False)
-            self.main_window.menu_bar.folders_to_tags_action.setEnabled(False)
-            self.main_window.menu_bar.library_info_action.setEnabled(False)
+            self.main_window.menu_bar.set_action_visibility(False)
         except AttributeError:
             logger.warning(
                 "[Library] Could not disable library management menu actions. Is this in a test?"
@@ -826,8 +692,12 @@ class QtDriver(DriverMixin, QObject):
         """Set the selection to all visible items."""
         self.main_window.thumb_layout.select_all()
 
-        self.set_clipboard_menu_viability()
-        self.set_select_actions_visibility()
+        has_copy_buffer = len(self.copy_buffer["fields"]) > 0 or len(self.copy_buffer["tags"]) > 0
+        self.main_window.menu_bar.set_clipboard_menu_visibility(len(self.selected), has_copy_buffer)
+        has_frame_content = len(self.frame_content) > 0
+        self.main_window.menu_bar.set_select_actions_visibility(
+            len(self.selected), has_frame_content
+        )
 
         self.main_window.preview_panel.set_selection(self.selected, update_preview=False)
 
@@ -835,16 +705,25 @@ class QtDriver(DriverMixin, QObject):
         """Invert the selection of all visible items."""
         self.main_window.thumb_layout.select_inverse()
 
-        self.set_clipboard_menu_viability()
-        self.set_select_actions_visibility()
+        has_copy_buffer = len(self.copy_buffer["fields"]) > 0 or len(self.copy_buffer["tags"]) > 0
+        self.main_window.menu_bar.set_clipboard_menu_visibility(len(self.selected), has_copy_buffer)
+        has_frame_content = len(self.frame_content) > 0
+        self.main_window.menu_bar.set_select_actions_visibility(
+            len(self.selected), has_frame_content
+        )
 
         self.main_window.preview_panel.set_selection(self.selected, update_preview=False)
 
     def clear_select_action_callback(self):
         self.main_window.thumb_layout.clear_selected()
 
-        self.set_select_actions_visibility()
-        self.set_clipboard_menu_viability()
+        has_copy_buffer = len(self.copy_buffer["fields"]) > 0 or len(self.copy_buffer["tags"]) > 0
+        self.main_window.menu_bar.set_clipboard_menu_visibility(len(self.selected), has_copy_buffer)
+        has_frame_content = len(self.frame_content) > 0
+        self.main_window.menu_bar.set_select_actions_visibility(
+            len(self.selected), has_frame_content
+        )
+
         self.main_window.preview_panel.set_selection(self.selected)
 
     def add_tags_to_selected_callback(self, tag_ids: list[int]):
@@ -1195,7 +1074,9 @@ class QtDriver(DriverMixin, QObject):
             if entry:
                 self.copy_buffer["fields"] = entry.fields
                 self.copy_buffer["tags"] = [tag.id for tag in entry.tags]
-        self.set_clipboard_menu_viability()
+
+        has_copy_buffer = len(self.copy_buffer["fields"]) > 0 or len(self.copy_buffer["tags"]) > 0
+        self.main_window.menu_bar.set_clipboard_menu_visibility(len(self.selected), has_copy_buffer)
 
     def paste_fields_action_callback(self):
         for id in self.selected:
@@ -1243,40 +1124,14 @@ class QtDriver(DriverMixin, QObject):
             self.main_window.thumb_layout.clear_selected()
             self.main_window.thumb_layout.select_entry(item_id)
 
-        self.set_clipboard_menu_viability()
-        self.set_select_actions_visibility()
+        has_copy_buffer = len(self.copy_buffer["fields"]) > 0 or len(self.copy_buffer["tags"]) > 0
+        self.main_window.menu_bar.set_clipboard_menu_visibility(len(self.selected), has_copy_buffer)
+        has_frame_content = len(self.frame_content) > 0
+        self.main_window.menu_bar.set_select_actions_visibility(
+            len(self.selected), has_frame_content
+        )
 
         self.main_window.preview_panel.set_selection(self.selected)
-
-    def set_clipboard_menu_viability(self):
-        if len(self.selected) == 1:
-            self.main_window.menu_bar.copy_fields_action.setEnabled(True)
-        else:
-            self.main_window.menu_bar.copy_fields_action.setEnabled(False)
-        if self.selected and (self.copy_buffer["fields"] or self.copy_buffer["tags"]):
-            self.main_window.menu_bar.paste_fields_action.setEnabled(True)
-        else:
-            self.main_window.menu_bar.paste_fields_action.setEnabled(False)
-
-    def set_select_actions_visibility(self):
-        if not self.main_window.menu_bar.add_tag_to_selected_action:
-            return
-
-        if self.frame_content:
-            self.main_window.menu_bar.select_all_action.setEnabled(True)
-            self.main_window.menu_bar.select_inverse_action.setEnabled(True)
-        else:
-            self.main_window.menu_bar.select_all_action.setEnabled(False)
-            self.main_window.menu_bar.select_inverse_action.setEnabled(False)
-
-        if self.selected:
-            self.main_window.menu_bar.add_tag_to_selected_action.setEnabled(True)
-            self.main_window.menu_bar.clear_select_action.setEnabled(True)
-            self.main_window.menu_bar.delete_file_action.setEnabled(True)
-        else:
-            self.main_window.menu_bar.add_tag_to_selected_action.setEnabled(False)
-            self.main_window.menu_bar.clear_select_action.setEnabled(False)
-            self.main_window.menu_bar.delete_file_action.setEnabled(False)
 
     def update_completions_list(self, text: str) -> None:
         matches = re.search(
@@ -1609,21 +1464,11 @@ class QtDriver(DriverMixin, QObject):
 
         self.init_ignore_modal()
 
-        self.set_select_actions_visibility()
-        self.main_window.menu_bar.save_library_backup_action.setEnabled(True)
-        self.main_window.menu_bar.close_library_action.setEnabled(True)
-        self.main_window.menu_bar.refresh_dir_action.setEnabled(True)
-        self.main_window.menu_bar.tag_manager_action.setEnabled(True)
-        self.main_window.menu_bar.color_manager_action.setEnabled(True)
-        self.main_window.menu_bar.ignore_modal_action.setEnabled(True)
-        self.main_window.menu_bar.new_tag_action.setEnabled(True)
-        self.main_window.menu_bar.fix_unlinked_entries_action.setEnabled(True)
-        self.main_window.menu_bar.fix_ignored_entries_action.setEnabled(True)
-        self.main_window.menu_bar.fix_dupe_files_action.setEnabled(True)
-        self.main_window.menu_bar.clear_thumb_cache_action.setEnabled(True)
-        self.main_window.menu_bar.folders_to_tags_action.setEnabled(True)
-        self.main_window.menu_bar.library_info_action.setEnabled(True)
-
+        has_frame_content = len(self.frame_content) > 0
+        self.main_window.menu_bar.set_select_actions_visibility(
+            len(self.selected), has_frame_content
+        )
+        self.main_window.menu_bar.set_action_visibility(True)
         self.main_window.preview_panel.set_selection(self.selected)
 
         # page (re)rendering, extract eventually
